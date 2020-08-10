@@ -15,22 +15,6 @@ def list_buckets():
     for bucket in s3.buckets.all():
         print(bucket.name)
 
-# @cli.command('list-bucket-objects')
-# @click.argument('buckets', nargs=-1)
-# def list_bucket_objects(buckets):
-#     "Lists bucket objects"
-#     allBuckets = s3.buckets.all()
-#     for bucket in buckets:
-#         print("-Objects from bucket: ", bucket)
-#         print("----------------------------------")
-#         if(s3.Bucket(bucket) in allBuckets):
-#             for obj in s3.Bucket(bucket).objects.all():
-#                 print(obj.key, end = " ")
-#                 print("encrypted with ", s3.Object(bucket, obj.key).server_side_encryption)
-#         else:
-#             print("Bucket " + bucket + " does not exist")
-#             print("Run 'list-buckets' command to see list of valid buckets")
-
 @cli.command('audit-encryption')
 @click.argument('bucket', required=False)
 def audit_encription(bucket):
@@ -65,12 +49,19 @@ def audit_encription(bucket):
                     print( default_encryption['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault'])
 
 @cli.command('set-encryption')
-@click.argument('buckets', nargs=-1)
+@click.argument('bucket', nargs=1)
 @click.option('--kms', help='kms key to be used')
-@click.option('--existingobjects', help='Encrypt existing objects in bucket: TRUE or FALSE' )
-def apply_encription(kms, buckets, existingobjects):
+@click.option('--existingobjects', help='Encrypt existing objects in bucket: TRUE or FALSE', default='FALSE' )
+def apply_encription(kms, bucket, existingobjects):
     "Enable encryption for a bucket(s)"
     s3client = session.client("s3")
+
+    if(bucket is not None):
+        allBuckets = s3.buckets.all()
+        if (s3.Bucket(bucket) not in allBuckets):
+            print("Bucket " + bucket + " does not exist")
+            print("Run 'list-buckets' command to see list of valid buckets")
+            exit(0)
 
     if kms is not None:
         target_encryption = {
@@ -94,18 +85,18 @@ def apply_encription(kms, buckets, existingobjects):
             ]
         }
 
-    for bucket in buckets:
-        fix_default_encryption(bucket, target_encryption)
-        print(existingobjects)
-        if(existingobjects.upper() == 'TRUE'):
-            print("encrypting existing obj")
-            # Encript existing objects
-            for obj in s3.Bucket(bucket).objects.all():
-                print(obj.key)
-                s3.Bucket(bucket).copy({'Bucket': bucket,'Key': obj.key}, obj.key)
+#    for ibucket in bucket:
+#    print(bucket)
+    apply_default_encryption(bucket, target_encryption)
+    if(existingobjects.upper() == 'TRUE'):
+        print("encrypting existing objects")
+        # Encript existing objects
+        for obj in s3.Bucket(bucket).objects.all():
+            print(obj.key)
+            s3.Bucket(bucket).copy({'Bucket': bucket,'Key': obj.key}, obj.key)
 
 
-def fix_default_encryption(bucketName, target_encryption):
+def apply_default_encryption(bucketName, target_encryption):
     s3client = session.client("s3")
     try:
         s3client.put_bucket_encryption(

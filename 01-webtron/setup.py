@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'sencrypt',
-    version = '0.0.6',
+    version = '0.0.7',
     author='Vipin Kasarla',
     author_email='vipink70@gmail.com',
     description= 'tool to test and encrypt s3 buckets',
